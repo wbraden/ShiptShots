@@ -12,6 +12,7 @@ export interface ScreenshotData extends ScreenshotMetadata {
   id: string;
   imageUrl: string;
   thumbnailUrl: string;
+  documentation?: string | null;
 }
 
 export type GroupByOption = 'component' | 'state' | 'flat';
@@ -21,6 +22,7 @@ export interface FilterOptions {
   component: string;
   state: string;
   tags: string[];
+  tagFilterMode: 'AND' | 'OR'; // 'AND' = all tags must be present, 'OR' = any tag can be present
 }
 
 export interface GroupedScreenshots {

@@ -3,7 +3,7 @@
 import { ScreenshotData } from '@/types/screenshot';
 import { formatDate, generateShareableUrl } from '@/utils/screenshot';
 import { X, Copy, ExternalLink, Calendar, Tag, Code } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ScreenshotDetailProps {
   screenshot: ScreenshotData | null;
@@ -12,6 +12,22 @@ interface ScreenshotDetailProps {
 
 export function ScreenshotDetail({ screenshot, onClose }: ScreenshotDetailProps) {
   const [copied, setCopied] = useState(false);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    
+    // Cleanup event listener on unmount
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [onClose]);
 
   if (!screenshot) return null;
 

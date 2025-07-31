@@ -76,6 +76,21 @@ export async function GET() {
     // Filter for PNG files and process them
     const pngFiles = files.filter(file => file.toLowerCase().endsWith('.png'));
     
+    // Read markdown files for documentation
+    const markdownFiles = files.filter(file => file.toLowerCase().endsWith('.md'));
+    const documentation: Record<string, string> = {};
+    
+    markdownFiles.forEach(filename => {
+      const componentName = filename.replace(/\.md$/i, '');
+      const filePath = path.join(screenshotsDir, filename);
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        documentation[componentName] = content;
+      } catch (error) {
+        console.error(`Error reading markdown file ${filename}:`, error);
+      }
+    });
+    
     const screenshots: ScreenshotData[] = pngFiles.map((filename, index) => {
       const { component, state, props } = parseFilename(filename);
       const tags = generateTags(component, state);
@@ -95,7 +110,8 @@ export async function GET() {
         tags,
         description,
         imageUrl: `/screenshots/${filename}`,
-        thumbnailUrl: `/screenshots/${filename}`
+        thumbnailUrl: `/screenshots/${filename}`,
+        documentation: documentation[component] || null
       };
     });
     

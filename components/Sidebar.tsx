@@ -4,6 +4,7 @@ import { ScreenshotData } from '@/types/screenshot';
 import { getUniqueComponents } from '@/utils/screenshot';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import Link from 'next/link';
 
 interface SidebarProps {
   screenshots: ScreenshotData[];
@@ -47,18 +48,20 @@ export function Sidebar({
         <div className="flex flex-col h-full">
           {/* Header with Logo */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            <Link 
+              href="/"
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <div className="w-8 h-8 flex items-center justify-center">
+                <svg width="19" height="25" viewBox="0 0 19 25" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9.19996 24.3468C5.8278 24.3468 3.18303 23.4922 1.86477 22.9602C0.661856 22.4753 -0.0831974 21.283 0.00743309 19.993L0.66421 9.27855L3.92338 9.47864L3.27837 20.0083C5.19691 20.7474 9.78729 22.0163 15.1227 19.9859C15.0415 18.8042 14.6142 12.5989 14.3635 8.97723C11.102 10.6215 8.3525 10.7486 6.31979 9.32445C5.04508 8.4311 4.31297 6.99395 4.31062 5.38261C4.30826 3.72302 5.09334 2.17759 6.41042 1.24892C7.63217 0.387343 9.07284 0.12016 10.4664 0.494452C12.0119 0.90994 13.3654 2.09755 14.0881 3.67123L11.1209 5.03539C10.8031 4.34448 10.2263 3.81247 9.61662 3.64886C9.15758 3.52528 8.72444 3.61355 8.2913 3.9184C7.84992 4.23031 7.57567 4.7894 7.57685 5.37791C7.57685 5.69099 7.65806 6.27362 8.19478 6.65027C9.44242 7.52479 11.9483 6.86095 14.8991 4.87297C15.3369 4.57871 15.8901 4.5128 16.3845 4.69759C17.3685 5.066 17.4238 5.86402 17.4815 6.70912L18.3937 19.9506C18.4949 21.2606 17.7439 22.4635 16.521 22.9461C13.8845 23.9878 11.3892 24.3468 9.19996 24.3468Z" fill="#37C35C"/>
                 </svg>
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900">ShiptShots</h1>
                 <p className="text-sm text-gray-500">Screenshot Browser</p>
               </div>
-            </div>
+            </Link>
             <button
               onClick={onToggle}
               className="lg:hidden p-1 hover:bg-gray-100 rounded"
@@ -80,10 +83,10 @@ export function Sidebar({
                 <button
                   onClick={() => onComponentSelect(null)}
                   className={cn(
-                    "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors",
+                    "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors border",
                     selectedComponent === null
-                      ? "bg-primary-100 text-primary-700 border border-primary-200"
-                      : "text-gray-700 hover:bg-gray-100"
+                      ? "bg-primary-100 text-primary-700 border-primary-200"
+                      : "text-gray-700 hover:bg-gray-100 border-transparent"
                   )}
                 >
                   <span className="font-medium">All Components</span>
@@ -103,10 +106,10 @@ export function Sidebar({
                     key={component}
                     onClick={() => onComponentSelect(component)}
                     className={cn(
-                      "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors",
+                      "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors border",
                       selectedComponent === component
-                        ? "bg-primary-100 text-primary-700 border border-primary-200"
-                        : "text-gray-700 hover:bg-gray-100"
+                        ? "bg-primary-100 text-primary-700 border-primary-200"
+                        : "text-gray-700 hover:bg-gray-100 border-transparent"
                     )}
                   >
                     <span>{component}</span>

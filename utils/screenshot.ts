@@ -167,10 +167,19 @@ export function filterScreenshots(
     
     // Tags filter
     if (filters.tags.length > 0) {
-      const hasMatchingTag = filters.tags.some(tag => 
-        screenshot.tags?.includes(tag)
-      );
-      if (!hasMatchingTag) return false;
+      if (filters.tagFilterMode === 'AND') {
+        // All selected tags must be present
+        const hasAllTags = filters.tags.every(tag => 
+          screenshot.tags?.includes(tag)
+        );
+        if (!hasAllTags) return false;
+      } else {
+        // Any selected tag can be present (OR mode)
+        const hasAnyTag = filters.tags.some(tag => 
+          screenshot.tags?.includes(tag)
+        );
+        if (!hasAnyTag) return false;
+      }
     }
     
     return true;
