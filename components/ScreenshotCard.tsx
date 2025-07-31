@@ -41,12 +41,6 @@ export function ScreenshotCard({ screenshot, onClick }: ScreenshotCardProps) {
           </div>
         </div>
         
-        {screenshot.description && (
-          <p className="text-gray-600 text-xs mb-3 line-clamp-2">
-            {screenshot.description}
-          </p>
-        )}
-        
         <div className="flex items-center justify-between text-xs text-gray-500">
           <div className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />

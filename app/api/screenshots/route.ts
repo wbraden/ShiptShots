@@ -81,13 +81,17 @@ export async function GET() {
       const tags = generateTags(component, state);
       const description = generateDescription(component, state);
       
+      // Get file stats to use actual creation/modification date
+      const filePath = path.join(screenshotsDir, filename);
+      const stats = fs.statSync(filePath);
+      
       return {
         id: `${component}_${state}_${index}`,
         component,
         state,
         props,
         filename,
-        date: new Date().toISOString(),
+        date: stats.birthtime.toISOString(), // Use file creation date
         tags,
         description,
         imageUrl: `/screenshots/${filename}`,
