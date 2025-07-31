@@ -15,7 +15,7 @@ import { ScreenshotDetail } from '@/components/ScreenshotDetail';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileMenuButton } from '@/components/MobileMenuButton';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
-import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X, Grid3X3, Grid2X2, Grid } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
 
@@ -35,6 +35,7 @@ export default function BrowserPage() {
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [docsExpanded, setDocsExpanded] = useState(false);
+  const [gridDensity, setGridDensity] = useState<'compact' | 'default' | 'comfortable'>('default');
 
   // Get initial component from URL params
   useEffect(() => {
@@ -99,6 +100,32 @@ export default function BrowserPage() {
 
   const handleCloseDetail = () => {
     setSelectedScreenshot(null);
+  };
+
+  const handleNavigateScreenshot = (direction: 'prev' | 'next') => {
+    if (!selectedScreenshot) return;
+    
+    const currentIndex = filteredScreenshots.findIndex(s => s.id === selectedScreenshot.id);
+    if (currentIndex === -1) return;
+    
+    let newIndex: number;
+    if (direction === 'prev') {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : filteredScreenshots.length - 1;
+    } else {
+      newIndex = currentIndex < filteredScreenshots.length - 1 ? currentIndex + 1 : 0;
+    }
+    
+    setSelectedScreenshot(filteredScreenshots[newIndex]);
+  };
+
+  const getNavigationState = () => {
+    if (!selectedScreenshot) return { hasPrevious: false, hasNext: false };
+    
+    const currentIndex = filteredScreenshots.findIndex(s => s.id === selectedScreenshot.id);
+    return {
+      hasPrevious: currentIndex > 0,
+      hasNext: currentIndex < filteredScreenshots.length - 1
+    };
   };
 
   const handleComponentSelect = (component: string | null) => {
@@ -239,6 +266,49 @@ export default function BrowserPage() {
                   </button>
                 </div>
               </div>
+              
+              {/* Grid Density Toggle */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Density:</span>
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setGridDensity('compact')}
+                    className={cn(
+                      "px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1",
+                      gridDensity === 'compact'
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    )}
+                    title="Compact"
+                  >
+                    <Grid3X3 className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => setGridDensity('default')}
+                    className={cn(
+                      "px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1",
+                      gridDensity === 'default'
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    )}
+                    title="Default"
+                  >
+                    <Grid2X2 className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => setGridDensity('comfortable')}
+                    className={cn(
+                      "px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1",
+                      gridDensity === 'comfortable'
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900"
+                    )}
+                    title="Comfortable"
+                  >
+                    <Grid className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
             </div>
             
             {/* Filter Section */}
@@ -325,7 +395,11 @@ export default function BrowserPage() {
                   </div>
 
                   {/* Screenshot Grid */}
-                  <div className="screenshot-grid">
+                  <div className={cn(
+                    "screenshot-grid",
+                    gridDensity === 'compact' && 'compact',
+                    gridDensity === 'comfortable' && 'comfortable'
+                  )}>
                     {groupScreenshots.map((screenshot) => (
                       <ScreenshotCard
                         key={screenshot.id}
@@ -374,6 +448,8 @@ export default function BrowserPage() {
             <ScreenshotDetail
               screenshot={selectedScreenshot}
               onClose={handleCloseDetail}
+              onNavigate={handleNavigateScreenshot}
+              {...getNavigationState()}
             />
           </div>
         </main>

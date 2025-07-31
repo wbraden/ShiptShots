@@ -24,6 +24,7 @@ export function ScreenshotCard({ screenshot, onClick }: ScreenshotCardProps) {
       className="screenshot-card cursor-pointer group"
       onClick={() => onClick(screenshot)}
     >
+      {/* Image Section */}
       <div className="relative aspect-video bg-gray-100 overflow-hidden flex items-center">
         <img
           src={screenshot.thumbnailUrl}
@@ -37,6 +38,10 @@ export function ScreenshotCard({ screenshot, onClick }: ScreenshotCardProps) {
         </div>
       </div>
       
+      {/* Stroke Separator */}
+      <div className="border-t border-gray-200"></div>
+      
+      {/* Text Content Section */}
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
           <div>
@@ -49,20 +54,8 @@ export function ScreenshotCard({ screenshot, onClick }: ScreenshotCardProps) {
           </div>
         </div>
         
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              <span>{formatDate(screenshot.date)}</span>
-            </div>
-            
-            {/* New Badge */}
-            {isNew() && (
-              <span className="inline-flex items-center px-1 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                New
-              </span>
-            )}
-          </div>
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+          <span>Added {formatDate(screenshot.date)}</span>
           
           {screenshot.tags && screenshot.tags.length > 0 && (
             <div className="flex items-center gap-1">
@@ -73,7 +66,7 @@ export function ScreenshotCard({ screenshot, onClick }: ScreenshotCardProps) {
         </div>
         
         {screenshot.tags && screenshot.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className="flex flex-wrap gap-1">
             {screenshot.tags.slice(0, 3).map((tag, index) => (
               <span
                 key={index}

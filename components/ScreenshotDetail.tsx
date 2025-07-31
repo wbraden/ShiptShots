@@ -2,32 +2,39 @@
 
 import { ScreenshotData } from '@/types/screenshot';
 import { formatDate, generateShareableUrl } from '@/utils/screenshot';
-import { X, Copy, ExternalLink, Calendar, Tag, Code } from 'lucide-react';
+import { X, Copy, ExternalLink, Calendar, Tag, Code, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface ScreenshotDetailProps {
   screenshot: ScreenshotData | null;
   onClose: () => void;
+  onNavigate?: (direction: 'prev' | 'next') => void;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
 }
 
-export function ScreenshotDetail({ screenshot, onClose }: ScreenshotDetailProps) {
+export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious = false, hasNext = false }: ScreenshotDetailProps) {
   const [copied, setCopied] = useState(false);
 
-  // Handle ESC key to close modal
+  // Handle keyboard navigation
   useEffect(() => {
-    const handleEscKey = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
+      } else if (event.key === 'ArrowLeft' && hasPrevious && onNavigate) {
+        onNavigate('prev');
+      } else if (event.key === 'ArrowRight' && hasNext && onNavigate) {
+        onNavigate('next');
       }
     };
 
-    document.addEventListener('keydown', handleEscKey);
+    document.addEventListener('keydown', handleKeyDown);
     
     // Cleanup event listener on unmount
     return () => {
-      document.removeEventListener('keydown', handleEscKey);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose]);
+  }, [onClose, onNavigate, hasPrevious, hasNext]);
 
   if (!screenshot) return null;
 
@@ -80,12 +87,35 @@ export function ScreenshotDetail({ screenshot, onClose }: ScreenshotDetailProps)
 
         <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
           {/* Image Section */}
-          <div className="lg:w-2/3 p-4 flex items-center justify-center">
-            <div className="bg-gray-100 rounded-lg overflow-hidden max-w-full max-h-full">
+          <div className="lg:w-2/3 p-4 flex items-center justify-center overflow-hidden bg-gray-50 relative">
+            {/* Previous Button */}
+            {hasPrevious && onNavigate && (
+              <button
+                onClick={() => onNavigate('prev')}
+                className="absolute left-6 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-2 shadow-lg transition-all duration-200 z-10"
+                title="Previous (←)"
+              >
+                <ChevronLeft className="w-6 h-6 text-gray-700" />
+              </button>
+            )}
+            
+            {/* Next Button */}
+            {hasNext && onNavigate && (
+              <button
+                onClick={() => onNavigate('next')}
+                className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-2 shadow-lg transition-all duration-200 z-10"
+                title="Next (→)"
+              >
+                <ChevronRight className="w-6 h-6 text-gray-700" />
+              </button>
+            )}
+            
+            <div className="bg-gray-100 rounded-lg overflow-hidden max-w-full max-h-full flex items-center justify-center">
               <img
                 src={screenshot.imageUrl}
                 alt={`${screenshot.component} - ${screenshot.state}`}
-                className="w-auto h-auto max-w-full max-h-full object-contain"
+                className="max-w-full max-h-full object-contain"
+                style={{ maxHeight: 'calc(100vh - 200px)' }}
               />
             </div>
           </div>

@@ -12,22 +12,42 @@
   .screenshot-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  
+  .screenshot-grid.compact {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 0.5rem;
+  }
+  
+  .screenshot-grid.comfortable {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
   }
   
   @media (max-width: 768px) {
     .screenshot-grid {
       grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+    
+    .screenshot-grid.compact {
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 0.5rem;
+    }
+    
+    .screenshot-grid.comfortable {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
     }
   }
   
   .screenshot-card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200 overflow-hidden;
+    @apply bg-white rounded-2xl border border-gray-200 transition-all duration-200 overflow-hidden;
   }
   
   .screenshot-card:hover {
-    @apply shadow-lg;
+    @apply border-gray-300;
   }
   
   .search-input {
