@@ -13,6 +13,8 @@ export interface ScreenshotData extends ScreenshotMetadata {
   imageUrl: string;
   thumbnailUrl: string;
   documentation?: string | null;
+  // New property for property toggle view
+  propertyControls?: PropertyControl[];
 }
 
 export type GroupByOption = 'component' | 'state' | 'flat';
@@ -27,4 +29,24 @@ export interface FilterOptions {
 
 export interface GroupedScreenshots {
   [key: string]: ScreenshotData[];
+}
+
+// New types for property toggle view
+export interface PropertyControl {
+  key: string;
+  value: string;
+  type: 'toggle' | 'dropdown' | 'text';
+  options?: string[]; // For dropdown controls
+}
+
+export interface PropertyGroup {
+  key: string;
+  type: 'toggle' | 'dropdown' | 'text';
+  options: string[];
+  currentValue: string;
+}
+
+export interface PropertyViewState {
+  isPropertyView: boolean;
+  selectedProperties: Record<string, string>;
 } 

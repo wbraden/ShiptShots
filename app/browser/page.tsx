@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ScreenshotData, FilterOptions, GroupByOption } from '@/types/screenshot';
+import { ScreenshotData, FilterOptions, GroupByOption, PropertyViewState } from '@/types/screenshot';
 import {
   filterScreenshots,
   groupScreenshots,
@@ -15,9 +15,11 @@ import { ScreenshotDetail } from '@/components/ScreenshotDetail';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileMenuButton } from '@/components/MobileMenuButton';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import { PropertyToggleView } from '@/components/PropertyToggleView';
 import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X, Grid3X3, Grid2X2, Grid, ArrowUpDown, Calendar, SortAsc, SortDesc, Check } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
+import { hasPropertyControls } from '@/utils/propertyControls';
 
 export default function BrowserPage() {
   const [screenshots, setScreenshots] = useState<ScreenshotData[]>([]);
@@ -39,6 +41,10 @@ export default function BrowserPage() {
   const [sortBy, setSortBy] = useState<'alphabetical' | 'date'>('alphabetical');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [propertyViewState, setPropertyViewState] = useState<PropertyViewState>({
+    isPropertyView: false,
+    selectedProperties: {}
+  });
 
   // Get initial component from URL params
   useEffect(() => {
@@ -420,6 +426,37 @@ export default function BrowserPage() {
                   </div>
                 )}
               </div>
+              
+              {/* Property View Toggle */}
+              {selectedComponent && hasPropertyControls(screenshots, selectedComponent) && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">View:</span>
+                  <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setPropertyViewState(prev => ({ ...prev, isPropertyView: false }))}
+                      className={cn(
+                        "px-2 py-1 text-xs rounded-md transition-colors",
+                        !propertyViewState.isPropertyView
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-gray-600 hover:text-gray-900"
+                      )}
+                    >
+                      Gallery
+                    </button>
+                    <button
+                      onClick={() => setPropertyViewState(prev => ({ ...prev, isPropertyView: true }))}
+                      className={cn(
+                        "px-2 py-1 text-xs rounded-md transition-colors",
+                        propertyViewState.isPropertyView
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-gray-600 hover:text-gray-900"
+                      )}
+                    >
+                      Properties
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Filter Section */}
@@ -491,69 +528,76 @@ export default function BrowserPage() {
               return null;
             })()}
 
-            {/* Screenshot Gallery */}
-            <div className="space-y-8">
-              {Object.entries(groupedScreenshots).map(([groupName, groupScreenshots]) => (
-                <div key={groupName}>
-                  {/* Group Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {groupName}
-                    </h2>
-                    <span className="text-sm text-gray-600">
-                      {groupScreenshots.length} screenshot{groupScreenshots.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
+            {/* Screenshot Gallery or Property View */}
+            {propertyViewState.isPropertyView && selectedComponent ? (
+              <PropertyToggleView
+                screenshots={filteredScreenshots}
+                onScreenshotClick={handleScreenshotClick}
+              />
+            ) : (
+              <div className="space-y-8">
+                {Object.entries(groupedScreenshots).map(([groupName, groupScreenshots]) => (
+                  <div key={groupName}>
+                    {/* Group Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        {groupName}
+                      </h2>
+                      <span className="text-sm text-gray-600">
+                        {groupScreenshots.length} screenshot{groupScreenshots.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
 
-                  {/* Screenshot Grid */}
-                  <div className={cn(
-                    "screenshot-grid",
-                    gridDensity === 'compact' && 'compact',
-                    gridDensity === 'comfortable' && 'comfortable'
-                  )}>
-                    {groupScreenshots.map((screenshot) => (
-                      <ScreenshotCard
-                        key={screenshot.id}
-                        screenshot={screenshot}
-                        onClick={handleScreenshotClick}
-                      />
-                    ))}
+                    {/* Screenshot Grid */}
+                    <div className={cn(
+                      "screenshot-grid",
+                      gridDensity === 'compact' && 'compact',
+                      gridDensity === 'comfortable' && 'comfortable'
+                    )}>
+                      {groupScreenshots.map((screenshot) => (
+                        <ScreenshotCard
+                          key={screenshot.id}
+                          screenshot={screenshot}
+                          onClick={handleScreenshotClick}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              {/* Loading State */}
-              {loading && (
-                <div className="text-center py-12">
-                  <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
-                    <svg className="animate-spin h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                {/* Loading State */}
+                {loading && (
+                  <div className="text-center py-12">
+                    <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
+                      <svg className="animate-spin h-8 w-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Loading screenshots...</h3>
+                    <p className="text-gray-600">Reading files from your screenshots directory</p>
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Loading screenshots...</h3>
-                  <p className="text-gray-600">Reading files from your screenshots directory</p>
-                </div>
-              )}
+                )}
 
-              {/* Empty State */}
-              {!loading && filteredScreenshots.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
+                {/* Empty State */}
+                {!loading && filteredScreenshots.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No screenshots found
+                    </h3>
+                    <p className="text-gray-600">
+                      Try adjusting your search or filter criteria.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No screenshots found
-                  </h3>
-                  <p className="text-gray-600">
-                    Try adjusting your search or filter criteria.
-                  </p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Screenshot Detail Modal */}
             <ScreenshotDetail
