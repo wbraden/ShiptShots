@@ -29,42 +29,35 @@ function parseFilename(filename: string): {
   // First part is component name
   const component = parts[0];
   
-  // Check if this is a property-based filename (contains "props")
-  if (parts.includes('props')) {
-    const propsIndex = parts.indexOf('props');
-    const state = parts.slice(1, propsIndex).join('_') || 'default';
-    
-    // Extract property controls from the remaining parts
-    const propertyParts = parts.slice(propsIndex + 1);
-    const propertyControls: PropertyControl[] = [];
-    
-    propertyParts.forEach(part => {
-      if (part.includes('-')) {
-        const [key, value] = part.split('-', 2);
-        if (key && value) {
-          propertyControls.push({
-            key,
-            value,
-            type: determineControlType(key, value)
-          });
-        }
-      }
-    });
-    
-    // Extract props from state (e.g., "primary_default" -> { type: "primary" })
-    const props: Record<string, any> = {};
-    if (state.includes('primary')) props.type = 'primary';
-    if (state.includes('secondary')) props.type = 'secondary';
-    if (state.includes('disabled')) props.disabled = true;
-    if (state.includes('focused')) props.focused = true;
-    if (state.includes('hover')) props.hover = true;
-    if (state.includes('test')) props.test = true;
-    
-    return { component, state, props, propertyControls };
-  }
+  // Extract property controls from any parts that contain key-value pairs
+  const propertyControls: PropertyControl[] = [];
+  const stateParts: string[] = [];
   
-  // Original logic for non-property filenames
-  const state = parts.slice(1).join('_');
+  parts.slice(1).forEach(part => {
+    // Skip "props" as it's just a flag
+    if (part === 'props') {
+      return;
+    }
+    
+    if (part.includes('-')) {
+      const firstHyphenIndex = part.indexOf('-');
+      const key = part.substring(0, firstHyphenIndex);
+      const value = part.substring(firstHyphenIndex + 1);
+      if (key && value && value !== 'props') { // Also skip if value is "props"
+        propertyControls.push({
+          key,
+          value,
+          type: determineControlType(key, value)
+        });
+      } else {
+        stateParts.push(part);
+      }
+    } else {
+      stateParts.push(part);
+    }
+  });
+  
+  const state = stateParts.join('_') || 'default';
   
   // Extract props from state (e.g., "primary_default" -> { type: "primary" })
   const props: Record<string, any> = {};
@@ -75,7 +68,7 @@ function parseFilename(filename: string): {
   if (state.includes('hover')) props.hover = true;
   if (state.includes('test')) props.test = true;
   
-  return { component, state, props };
+  return { component, state, props, propertyControls };
 }
 
 // Generate tags based on component and state

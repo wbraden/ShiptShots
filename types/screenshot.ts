@@ -35,13 +35,13 @@ export interface GroupedScreenshots {
 export interface PropertyControl {
   key: string;
   value: string;
-  type: 'toggle' | 'dropdown' | 'text';
+  type: 'toggle' | 'dropdown';
   options?: string[]; // For dropdown controls
 }
 
 export interface PropertyGroup {
   key: string;
-  type: 'toggle' | 'dropdown' | 'text';
+  type: 'toggle' | 'dropdown';
   options: string[];
   currentValue: string;
 }

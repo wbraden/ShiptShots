@@ -1,20 +1,14 @@
 import { PropertyControl, PropertyGroup } from '@/types/screenshot';
 
 // Determine the type of a property control based on its key and value
-export function determineControlType(key: string, value: string): 'toggle' | 'dropdown' | 'text' {
+export function determineControlType(key: string, value: string): 'toggle' | 'dropdown' {
   // Boolean values (true/false) become toggles
   if (value === 'true' || value === 'false') {
     return 'toggle';
   }
-  
-  // Common property keys that should be dropdowns
-  const dropdownKeys = ['size', 'variant', 'type', 'color', 'theme', 'state'];
-  if (dropdownKeys.includes(key.toLowerCase())) {
-    return 'dropdown';
-  }
-  
-  // Default to text for other properties
-  return 'text';
+
+  // Everything else becomes a dropdown
+  return 'dropdown';
 }
 
 // Group property controls by key and determine their types

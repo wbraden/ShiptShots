@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ScreenshotData, FilterOptions, GroupByOption, PropertyViewState } from '@/types/screenshot';
+import { ScreenshotData, FilterOptions, GroupByOption } from '@/types/screenshot';
 import {
   filterScreenshots,
   groupScreenshots,
@@ -15,7 +15,7 @@ import { ScreenshotDetail } from '@/components/ScreenshotDetail';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileMenuButton } from '@/components/MobileMenuButton';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
-import { PropertyToggleView } from '@/components/PropertyToggleView';
+
 import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X, Grid3X3, Grid2X2, Grid, ArrowUpDown, Calendar, SortAsc, SortDesc, Check } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
@@ -41,10 +41,6 @@ export default function BrowserPage() {
   const [sortBy, setSortBy] = useState<'alphabetical' | 'date'>('alphabetical');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
-  const [propertyViewState, setPropertyViewState] = useState<PropertyViewState>({
-    isPropertyView: false,
-    selectedProperties: {}
-  });
 
   // Get initial component from URL params
   useEffect(() => {
@@ -427,36 +423,7 @@ export default function BrowserPage() {
                 )}
               </div>
               
-              {/* Property View Toggle */}
-              {selectedComponent && hasPropertyControls(screenshots, selectedComponent) && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">View:</span>
-                  <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => setPropertyViewState(prev => ({ ...prev, isPropertyView: false }))}
-                      className={cn(
-                        "px-2 py-1 text-xs rounded-md transition-colors",
-                        !propertyViewState.isPropertyView
-                          ? "bg-white text-gray-900 shadow-sm"
-                          : "text-gray-600 hover:text-gray-900"
-                      )}
-                    >
-                      Gallery
-                    </button>
-                    <button
-                      onClick={() => setPropertyViewState(prev => ({ ...prev, isPropertyView: true }))}
-                      className={cn(
-                        "px-2 py-1 text-xs rounded-md transition-colors",
-                        propertyViewState.isPropertyView
-                          ? "bg-white text-gray-900 shadow-sm"
-                          : "text-gray-600 hover:text-gray-900"
-                      )}
-                    >
-                      Properties
-                    </button>
-                  </div>
-                </div>
-              )}
+
             </div>
             
             {/* Filter Section */}
@@ -528,13 +495,7 @@ export default function BrowserPage() {
               return null;
             })()}
 
-            {/* Screenshot Gallery or Property View */}
-            {propertyViewState.isPropertyView && selectedComponent ? (
-              <PropertyToggleView
-                screenshots={filteredScreenshots}
-                onScreenshotClick={handleScreenshotClick}
-              />
-            ) : (
+            {/* Screenshot Gallery */}
               <div className="space-y-8">
                 {Object.entries(groupedScreenshots).map(([groupName, groupScreenshots]) => (
                   <div key={groupName}>
@@ -597,13 +558,13 @@ export default function BrowserPage() {
                   </div>
                 )}
               </div>
-            )}
 
             {/* Screenshot Detail Modal */}
             <ScreenshotDetail
               screenshot={selectedScreenshot}
               onClose={handleCloseDetail}
               onNavigate={handleNavigateScreenshot}
+              allScreenshots={screenshots}
               {...getNavigationState()}
             />
           </div>
