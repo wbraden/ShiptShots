@@ -15,7 +15,7 @@ import { ScreenshotDetail } from '@/components/ScreenshotDetail';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileMenuButton } from '@/components/MobileMenuButton';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
-import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X, Grid3X3, Grid2X2, Grid } from 'lucide-react';
+import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X, Grid3X3, Grid2X2, Grid, ArrowUpDown, Calendar, SortAsc, SortDesc, Check } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
 
@@ -36,6 +36,9 @@ export default function BrowserPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [docsExpanded, setDocsExpanded] = useState(false);
   const [gridDensity, setGridDensity] = useState<'compact' | 'default' | 'comfortable'>('default');
+  const [sortBy, setSortBy] = useState<'alphabetical' | 'date'>('alphabetical');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
 
   // Get initial component from URL params
   useEffect(() => {
@@ -83,16 +86,36 @@ export default function BrowserPage() {
     fetchScreenshots();
   }, []);
 
-  // Apply filters
+  // Apply filters and sorting
   useEffect(() => {
     let filtered = filterScreenshots(screenshots, filters);
     if (selectedComponent) {
       filtered = filtered.filter(s => s.component === selectedComponent);
     }
-    setFilteredScreenshots(filtered);
-    const grouped = groupScreenshots(filtered, 'component');
-    setGroupedScreenshots(grouped);
-  }, [screenshots, filters, selectedComponent]);
+    
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortBy === 'alphabetical') {
+        const comparison = a.component.localeCompare(b.component);
+        return sortOrder === 'asc' ? comparison : -comparison;
+      } else {
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+    });
+    
+    setFilteredScreenshots(sorted);
+    
+    // Group by component only when sorting alphabetically
+    if (sortBy === 'alphabetical') {
+      const grouped = groupScreenshots(sorted, 'component');
+      setGroupedScreenshots(grouped);
+    } else {
+      // For date sorting, create a flat list with a single group
+      setGroupedScreenshots({ 'All Screenshots': sorted });
+    }
+  }, [screenshots, filters, selectedComponent, sortBy, sortOrder]);
 
   const handleScreenshotClick = (screenshot: ScreenshotData) => {
     setSelectedScreenshot(screenshot);
@@ -308,6 +331,94 @@ export default function BrowserPage() {
                     <Grid className="w-3 h-3" />
                   </button>
                 </div>
+              </div>
+              
+              {/* Sort Controls */}
+              <div className="relative">
+                <button
+                  onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                  className="flex items-center gap-1 px-2 py-1.5 text-xs bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <span>{sortBy === 'alphabetical' ? 'Alphabetical' : 'Date created'}</span>
+                  <ChevronDown className="w-3 h-3 text-gray-500" />
+                </button>
+                
+                {sortDropdownOpen && (
+                  <div className="absolute top-full right-0 mt-1 w-40 bg-gray-900 rounded-md shadow-lg z-10">
+                    {/* Sort by section */}
+                    <div className="p-1.5">
+                      <div className="text-xs text-gray-400 mb-1.5">Sort by:</div>
+                      <button
+                        onClick={() => {
+                          setSortBy('alphabetical');
+                          setSortDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left px-1.5 py-1 text-xs rounded flex items-center justify-between",
+                          sortBy === 'alphabetical'
+                            ? "bg-blue-600 text-white"
+                            : "text-white hover:bg-gray-800"
+                        )}
+                      >
+                        <span>Alphabetical</span>
+                        {sortBy === 'alphabetical' && <Check className="w-3 h-3" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSortBy('date');
+                          setSortDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left px-1.5 py-1 text-xs rounded flex items-center justify-between",
+                          sortBy === 'date'
+                            ? "bg-blue-600 text-white"
+                            : "text-white hover:bg-gray-800"
+                        )}
+                      >
+                        <span>Date created</span>
+                        {sortBy === 'date' && <Check className="w-3 h-3" />}
+                      </button>
+                    </div>
+                    
+                    {/* Separator */}
+                    <div className="border-t border-gray-700"></div>
+                    
+                    {/* Order section */}
+                    <div className="p-1.5">
+                      <div className="text-xs text-gray-400 mb-1.5">Order:</div>
+                      <button
+                        onClick={() => {
+                          setSortOrder('asc');
+                          setSortDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left px-1.5 py-1 text-xs rounded flex items-center justify-between",
+                          sortOrder === 'asc'
+                            ? "text-white"
+                            : "text-white hover:bg-gray-800"
+                        )}
+                      >
+                        <span>{sortBy === 'alphabetical' ? 'A-Z' : 'Oldest first'}</span>
+                        {sortOrder === 'asc' && <Check className="w-3 h-3" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSortOrder('desc');
+                          setSortDropdownOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left px-1.5 py-1 text-xs rounded flex items-center justify-between",
+                          sortOrder === 'desc'
+                            ? "text-white"
+                            : "text-white hover:bg-gray-800"
+                        )}
+                      >
+                        <span>{sortBy === 'alphabetical' ? 'Z-A' : 'Newest first'}</span>
+                        {sortOrder === 'desc' && <Check className="w-3 h-3" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
