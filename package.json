@@ -2,6 +2,9 @@
   "name": "shiptshots",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.17.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,6 +12,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/sharp": "^0.32.0",
     "clsx": "^2.0.0",
     "lucide-react": "^0.294.0",
     "next": "14.0.0",
@@ -16,6 +20,7 @@
     "react-dom": "^18",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "sharp": "^0.34.3",
     "tailwind-merge": "^2.0.0"
   },
   "devDependencies": {

@@ -4,26 +4,70 @@ import path from 'path';
 import { ScreenshotData, PropertyControl } from '@/types/screenshot';
 import { determineControlType } from '@/utils/propertyControls';
 
-// Check if image is 2x resolution
-function checkImageResolution(filePath: string): { width: number; height: number; is2x: boolean } {
+// Optional Sharp import with fallback
+let sharp: any = null;
+try {
+  sharp = require('sharp');
+} catch (error) {
+  console.warn('Sharp module not available, using fallback image processing');
+}
+
+// Check if image is 2x resolution (with fallback)
+async function checkImageResolution(filePath: string): Promise<{ width: number; height: number; is2x: boolean }> {
   try {
-    // For now, we'll use a simple heuristic based on file size
-    // In a real implementation, you'd use a library like 'sharp' to get actual dimensions
-    const stats = fs.statSync(filePath);
-    const fileSizeKB = stats.size / 1024;
-    
-    // Rough heuristic: files under 50KB are likely not 2x
-    // This is a simple approximation - in production you'd want actual image dimensions
-    const is2x = fileSizeKB > 50;
-    
-    return {
-      width: 0, // Would be actual width in production
-      height: 0, // Would be actual height in production
-      is2x
-    };
+    if (sharp) {
+      // Use sharp to get actual image dimensions
+      const metadata = await sharp(filePath).metadata();
+      const { width = 0, height = 0 } = metadata;
+      
+      // Determine if image is 2x based on common UI component dimensions
+      const isLargeEnough = width > 400 || height > 200;
+      const aspectRatio = width / height;
+      const isReasonableAspectRatio = aspectRatio >= 0.5 && aspectRatio <= 4;
+      const hasEvenDimensions = width % 2 === 0 && height % 2 === 0;
+      const totalPixels = width * height;
+      const isHighPixelCount = totalPixels > 50000;
+      const isMultipleOfCommonSizes = 
+        (width >= 200 && height >= 100) || 
+        (width >= 100 && height >= 200) ||
+        (width >= 300 && height >= 150) ||
+        (width >= 150 && height >= 300);
+      
+      const criteria = [
+        isLargeEnough,
+        isReasonableAspectRatio,
+        hasEvenDimensions,
+        isHighPixelCount,
+        isMultipleOfCommonSizes
+      ];
+      
+      const metCriteria = criteria.filter(Boolean).length;
+      const finalIs2x = metCriteria >= 3;
+      
+      return {
+        width,
+        height,
+        is2x: finalIs2x
+      };
+    } else {
+      // Fallback to file size heuristic
+      const stats = fs.statSync(filePath);
+      const fileSizeKB = stats.size / 1024;
+      const is2x = fileSizeKB > 50;
+      return { width: 0, height: 0, is2x };
+    }
   } catch (error) {
     console.error('Error checking image resolution:', error);
-    return { width: 0, height: 0, is2x: false };
+    // Final fallback
+    try {
+      const stats = fs.statSync(filePath);
+      const fileSizeKB = stats.size / 1024;
+      const is2x = fileSizeKB > 50;
+      return { width: 0, height: 0, is2x };
+    } catch (fallbackError) {
+      console.error('Error in fallback resolution check:', fallbackError);
+      return { width: 0, height: 0, is2x: false };
+    }
   }
 }
 
@@ -40,10 +84,10 @@ function parseFilename(filename: string): {
   // Split by underscore to get parts
   const parts = nameWithoutExt.split('_');
   
-  if (parts.length < 2) {
-    // Fallback for simple names
+  if (parts.length < 1) {
+    // Fallback for empty names
     return {
-      component: parts[0] || 'Unknown',
+      component: 'Unknown',
       state: 'default',
       props: {}
     };
@@ -90,6 +134,14 @@ function parseFilename(filename: string): {
   if (state.includes('focused')) props.focused = true;
   if (state.includes('hover')) props.hover = true;
   if (state.includes('test')) props.test = true;
+  if (state.includes('selected')) props.selected = true;
+  if (state.includes('unselected')) props.selected = false;
+  if (state.includes('checked')) props.checked = true;
+  if (state.includes('unchecked')) props.checked = false;
+  if (state.includes('open')) props.open = true;
+  if (state.includes('closed')) props.open = false;
+  if (state.includes('active')) props.active = true;
+  if (state.includes('inactive')) props.active = false;
   
   return { component, state, props, propertyControls };
 }
@@ -127,18 +179,22 @@ function generateDescription(component: string, state: string): string {
 
 export async function GET() {
   try {
+    console.log('API: Starting to process screenshots...');
     const screenshotsDir = path.join(process.cwd(), 'public', 'screenshots');
     
     // Check if directory exists
     if (!fs.existsSync(screenshotsDir)) {
+      console.log('API: Screenshots directory not found, returning empty array');
       return NextResponse.json({ screenshots: [] });
     }
     
     // Read all files in the directory
     const files = fs.readdirSync(screenshotsDir);
+    console.log(`API: Found ${files.length} files in screenshots directory`);
     
     // Filter for PNG files and process them
     const pngFiles = files.filter(file => file.toLowerCase().endsWith('.png'));
+    console.log(`API: Found ${pngFiles.length} PNG files`);
     
     // Read markdown files for documentation
     const markdownFiles = files.filter(file => file.toLowerCase().endsWith('.md'));
@@ -155,36 +211,67 @@ export async function GET() {
       }
     });
     
-    const screenshots: ScreenshotData[] = pngFiles.map((filename, index) => {
-      const { component, state, props, propertyControls } = parseFilename(filename);
-      const tags = generateTags(component, state, propertyControls);
-      const description = generateDescription(component, state);
-      
-      // Get file stats to use actual creation/modification date
-      const filePath = path.join(screenshotsDir, filename);
-      const stats = fs.statSync(filePath);
-      
-      // Check image resolution
-      const resolution = checkImageResolution(filePath);
-      
-      return {
-        id: `${component}_${state}_${index}`,
-        component,
-        state,
-        props,
-        filename,
-        date: stats.birthtime.toISOString(), // Use file creation date
-        tags,
-        description,
-        imageUrl: `/screenshots/${filename}`,
-        thumbnailUrl: `/screenshots/${filename}`,
-        documentation: documentation[component] || null,
-        propertyControls,
-        resolution
-      };
+    // Process screenshots with async resolution checking
+    console.log('API: Starting to process screenshots...');
+    const screenshotsPromises = pngFiles.map(async (filename, index) => {
+      try {
+        const { component, state, props, propertyControls } = parseFilename(filename);
+        const tags = generateTags(component, state, propertyControls);
+        const description = generateDescription(component, state);
+        
+        // Get file stats to use actual creation/modification date
+        const filePath = path.join(screenshotsDir, filename);
+        const stats = fs.statSync(filePath);
+        
+        // Check image resolution (now async)
+        const resolution = await checkImageResolution(filePath);
+        
+        return {
+          id: `${component}_${state}_${index}`,
+          component,
+          state,
+          props,
+          filename,
+          date: stats.birthtime.toISOString(), // Use file creation date
+          tags,
+          description,
+          imageUrl: `/screenshots/${filename}`,
+          thumbnailUrl: `/screenshots/${filename}`,
+          documentation: documentation[component] || null,
+          propertyControls,
+          resolution
+        };
+      } catch (error) {
+        console.error(`Error processing screenshot ${filename}:`, error);
+        // Return a fallback object for this screenshot
+        return {
+          id: `error_${index}`,
+          component: 'Error',
+          state: 'error',
+          props: {},
+          filename,
+          date: new Date().toISOString(),
+          tags: ['error'],
+          description: `Error processing ${filename}`,
+          imageUrl: `/screenshots/${filename}`,
+          thumbnailUrl: `/screenshots/${filename}`,
+          documentation: null,
+          propertyControls: [],
+          resolution: { width: 0, height: 0, is2x: false }
+        };
+      }
     });
     
-    return NextResponse.json({ screenshots });
+    const screenshots = await Promise.all(screenshotsPromises);
+    console.log(`API: Successfully processed ${screenshots.length} screenshots`);
+    
+    // Limit the response size by truncating documentation if it's too large
+    const processedScreenshots = screenshots.map(screenshot => ({
+      ...screenshot,
+      documentation: screenshot.documentation ? screenshot.documentation.substring(0, 500) + '...' : null
+    }));
+    
+    return NextResponse.json({ screenshots: processedScreenshots });
   } catch (error) {
     console.error('Error reading screenshots directory:', error);
     return NextResponse.json({ screenshots: [] }, { status: 500 });

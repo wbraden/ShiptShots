@@ -16,10 +16,10 @@ import { Sidebar } from '@/components/Sidebar';
 import { MobileMenuButton } from '@/components/MobileMenuButton';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
-import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X, Grid3X3, Grid2X2, Grid, ArrowUpDown, Calendar, SortAsc, SortDesc, Check, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
+import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X, Grid3X3, Grid2X2, Grid, ArrowUpDown, Calendar, SortAsc, SortDesc, Check, ChevronLeft, ChevronRight, Copy, AlertCircle } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
-import { hasPropertyControls, groupPropertyControls, filterScreenshotsByProperties } from '@/utils/propertyControls';
+import { hasPropertyControls, groupPropertyControls, filterScreenshotsByProperties, updatePropertiesForValidCombination } from '@/utils/propertyControls';
 import { formatDate, generateShareableUrl } from '@/utils/screenshot';
 import { GroupedTags } from '@/components/GroupedTags';
 
@@ -264,12 +264,15 @@ export default function BrowserPage() {
   const filteredCount = filteredScreenshots.length;
 
   // Property control logic for detail view
+  // IMMUTABLE: This implements Figma/Storybook-style variant behavior
+  // - ALL property options are always available (no filtering)
+  // - When a property changes, ALL other properties automatically adjust to match a valid variant
   const componentScreenshots = selectedScreenshot ? screenshots.filter(s => s.component === selectedScreenshot.component) : [];
   const hasPropertyControlsForComponent = hasPropertyControls(screenshots, selectedScreenshot?.component);
-  const basePropertyGroups = groupPropertyControls(componentScreenshots);
+  const basePropertyGroups = groupPropertyControls(componentScreenshots, selectedProperties);
   const detailFilteredScreenshots = filterScreenshotsByProperties(componentScreenshots, selectedProperties);
   
-  // Simple property groups - show all options like Figma
+  // Property groups with ALL available options (no filtering) - IMMUTABLE BEHAVIOR
   const propertyGroups = basePropertyGroups.map(group => ({
     ...group,
     currentValue: selectedProperties[group.key] || group.currentValue
@@ -278,11 +281,13 @@ export default function BrowserPage() {
   // Use the first matching screenshot, or fall back to the original
   const displayScreenshot = detailFilteredScreenshots.length > 0 ? detailFilteredScreenshots[0] : selectedScreenshot;
 
+  // IMMUTABLE: Property change handler - automatically updates all properties to match valid combinations
   const handlePropertyChange = (key: string, value: string) => {
-    setSelectedProperties(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setSelectedProperties(prev => {
+      // Use the new function to update all properties for valid combinations
+      const updatedProperties = updatePropertiesForValidCombination(componentScreenshots, key, value, prev);
+      return updatedProperties;
+    });
   };
 
   const handleCopyLink = async () => {
@@ -338,24 +343,32 @@ export default function BrowserPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {getNavigationState().hasPrevious && handleNavigateScreenshot && (
-                    <button
-                      onClick={() => handleNavigateScreenshot('prev')}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="Previous (←)"
-                    >
-                      <ChevronLeft className="w-4 h-4 text-gray-700" />
-                    </button>
-                  )}
-                  {getNavigationState().hasNext && handleNavigateScreenshot && (
-                    <button
-                      onClick={() => handleNavigateScreenshot('next')}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                      title="Next (→)"
-                    >
-                      <ChevronRight className="w-4 h-4 text-gray-700" />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleNavigateScreenshot('prev')}
+                    disabled={!getNavigationState().hasPrevious}
+                    className={cn(
+                      "p-2 rounded-lg transition-colors",
+                      getNavigationState().hasPrevious
+                        ? "hover:bg-gray-100 text-gray-700"
+                        : "text-gray-300 cursor-not-allowed"
+                    )}
+                    title="Previous (←)"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleNavigateScreenshot('next')}
+                    disabled={!getNavigationState().hasNext}
+                    className={cn(
+                      "p-2 rounded-lg transition-colors",
+                      getNavigationState().hasNext
+                        ? "hover:bg-gray-100 text-gray-700"
+                        : "text-gray-300 cursor-not-allowed"
+                    )}
+                    title="Next (→)"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={handleCopyLink}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600 hover:text-gray-700 flex items-center gap-2"
@@ -571,8 +584,8 @@ export default function BrowserPage() {
             // Detail View (Storybook-like)
             <div className="flex-1 flex flex-col lg:flex-row">
               {/* Canvas Area (Storybook Canvas) */}
-              <div className="flex-1 bg-gray-50 flex items-center justify-center p-4 overflow-auto min-h-0">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <div className="flex-1 bg-gray-100 flex items-center justify-center p-4 overflow-auto min-h-0">
+                <div className="bg-white">
                   <img
                     src={displayScreenshot?.imageUrl || selectedScreenshot?.imageUrl}
                     alt={`${displayScreenshot?.component || selectedScreenshot?.component} - ${displayScreenshot?.state || selectedScreenshot?.state}`}
@@ -606,13 +619,13 @@ export default function BrowserPage() {
                                     }}
                                     className={cn(
                                       "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                                      selectedProperties[group.key] === group.options[1] ? "bg-blue-600" : "bg-gray-200"
+                                      selectedProperties[group.key] === 'true' ? "bg-blue-600" : "bg-gray-200"
                                     )}
                                   >
                                     <span
                                       className={cn(
                                         "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-                                        selectedProperties[group.key] === group.options[1] ? "translate-x-6" : "translate-x-1"
+                                        selectedProperties[group.key] === 'true' ? "translate-x-6" : "translate-x-1"
                                       )}
                                     />
                                   </button>
@@ -659,11 +672,26 @@ export default function BrowserPage() {
                       />
                     </div>
                   )}
+
+                  {/* Low Resolution Warning */}
+                  {selectedScreenshot?.resolution && !selectedScreenshot.resolution.is2x && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="text-sm font-medium text-yellow-800">Low Resolution Image</h4>
+                          <p className="text-xs text-yellow-700 mt-1">
+                            This screenshot may appear blurry on high-resolution displays. Consider updating to a 2x resolution version.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           ) : (
-            // Browser View (Original Grid Layout)
+            // Browser View (Grid Layout)
             <div className="px-4 sm:px-6 lg:px-8 py-8">
 
             {/* Component Filter Indicator */}

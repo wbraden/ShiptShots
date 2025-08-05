@@ -14,11 +14,26 @@ export default function Home() {
   useEffect(() => {
     const fetchScreenshots = async () => {
       try {
+        console.log('Frontend: Starting to fetch screenshots...');
         setLoading(true);
+        
         const response = await fetch('/api/screenshots');
+        console.log('Frontend: Got response:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Frontend: Got data with', data.screenshots?.length || 0, 'screenshots');
         const apiScreenshots = data.screenshots || [];
-        setScreenshots(apiScreenshots);
+        
+        // Limit the initial load to prevent performance issues
+        const limitedScreenshots = apiScreenshots.slice(0, 50);
+        console.log('Frontend: Limited to', limitedScreenshots.length, 'screenshots for initial load');
+        
+        setScreenshots(limitedScreenshots);
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching screenshots:', error);
         // Fallback to test data if API fails
@@ -37,7 +52,6 @@ export default function Home() {
           }
         ];
         setScreenshots(fallbackData);
-      } finally {
         setLoading(false);
       }
     };

@@ -4,7 +4,7 @@ import { ScreenshotData, PropertyControl } from '@/types/screenshot';
 import { formatDate, generateShareableUrl } from '@/utils/screenshot';
 import { X, Copy, ExternalLink, Calendar, Code, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { groupPropertyControls, filterScreenshotsByProperties, hasPropertyControls } from '@/utils/propertyControls';
+import { groupPropertyControls, filterScreenshotsByProperties, hasPropertyControls, updatePropertiesForValidCombination } from '@/utils/propertyControls';
 import { cn } from '@/utils/cn';
 import { GroupedTags } from '@/components/GroupedTags';
 
@@ -30,7 +30,7 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
     return initialProperties;
   });
 
-  // Update selected properties when screenshot changes
+  // Update selected properties when screenshot changes (but not when property controls are being used)
   useEffect(() => {
     if (screenshot?.propertyControls) {
       const initialProperties: Record<string, string> = {};
@@ -38,8 +38,10 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
         initialProperties[control.key] = control.value;
       });
       setSelectedProperties(initialProperties);
+    } else {
+      setSelectedProperties({});
     }
-  }, [screenshot]);
+  }, [screenshot?.id]); // Only run when the screenshot ID changes, not the entire screenshot object
 
   // Handle keyboard navigation - must be before any conditional returns
   useEffect(() => {
@@ -86,12 +88,15 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
   };
 
   // Property control logic
+  // IMMUTABLE: This implements Figma/Storybook-style variant behavior
+  // - ALL property options are always available (no filtering)
+  // - When a property changes, ALL other properties automatically adjust to match a valid variant
   const componentScreenshots = allScreenshots.filter(s => s.component === screenshot?.component);
-  const basePropertyGroups = groupPropertyControls(componentScreenshots);
+  const basePropertyGroups = groupPropertyControls(componentScreenshots, selectedProperties);
   const filteredScreenshots = filterScreenshotsByProperties(componentScreenshots, selectedProperties);
   const hasPropertyControlsForComponent = hasPropertyControls(componentScreenshots);
 
-  // Simple property groups - show all options like Figma
+  // Property groups with ALL available options (no filtering) - IMMUTABLE BEHAVIOR
   const propertyGroups = basePropertyGroups.map(group => ({
     ...group,
     currentValue: selectedProperties[group.key] || group.currentValue
@@ -105,56 +110,12 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
   const currentHasPrevious = hasActiveProperties ? false : hasPrevious;
   const currentHasNext = hasActiveProperties ? false : hasNext;
 
+  // IMMUTABLE: Property change handler - automatically updates all properties to match valid combinations
   const handlePropertyChange = (key: string, value: string) => {
     setSelectedProperties(prev => {
-      const newProperties = { ...prev, [key]: value };
-      
-      // Find all screenshots that match the new property selection
-      const matchingScreenshots = componentScreenshots.filter(screenshot => {
-        if (!screenshot.propertyControls) return false;
-        
-        return Object.entries(newProperties).every(([propKey, propValue]) => {
-          const control = screenshot.propertyControls?.find(c => c.key === propKey);
-          return control && control.value === propValue;
-        });
-      });
-      
-      // If we have matching screenshots, use the first one to set all properties
-      if (matchingScreenshots.length > 0) {
-        const matchingScreenshot = matchingScreenshots[0];
-        const updatedProperties: Record<string, string> = {};
-        
-        // Set all properties based on the matching screenshot
-        matchingScreenshot.propertyControls?.forEach(control => {
-          updatedProperties[control.key] = control.value;
-        });
-        
-        return updatedProperties;
-      }
-      
-      // If no exact match, try to find the closest match by relaxing constraints
-      const relaxedScreenshots = componentScreenshots.filter(screenshot => {
-        if (!screenshot.propertyControls) return false;
-        
-        // Check if this screenshot has the property we just changed
-        const changedProperty = screenshot.propertyControls.find(c => c.key === key);
-        return changedProperty && changedProperty.value === value;
-      });
-      
-      if (relaxedScreenshots.length > 0) {
-        const closestScreenshot = relaxedScreenshots[0];
-        const updatedProperties: Record<string, string> = {};
-        
-        // Set all properties based on the closest matching screenshot
-        closestScreenshot.propertyControls?.forEach(control => {
-          updatedProperties[control.key] = control.value;
-        });
-        
-        return updatedProperties;
-      }
-      
-      // Fallback: just update the changed property
-      return newProperties;
+      // Use the new function to update all properties for valid combinations
+      const updatedProperties = updatePropertiesForValidCombination(componentScreenshots, key, value, prev);
+      return updatedProperties;
     });
   };
 
@@ -248,13 +209,13 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
                                 }}
                                 className={cn(
                                   "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                                  selectedProperties[group.key] === group.options[1] ? "bg-blue-600" : "bg-gray-200"
+                                  selectedProperties[group.key] === 'true' ? "bg-blue-600" : "bg-gray-200"
                                 )}
                               >
                                 <span
                                   className={cn(
                                     "inline-block h-3 w-3 transform rounded-full bg-white transition-transform",
-                                    selectedProperties[group.key] === group.options[1] ? "translate-x-5" : "translate-x-1"
+                                    selectedProperties[group.key] === 'true' ? "translate-x-5" : "translate-x-1"
                                   )}
                                 />
                               </button>

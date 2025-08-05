@@ -1,6 +1,32 @@
 # ShiptShots - Screenshot Browser
 
-A modern web-based Screenshot Browser tool built for design and engineering teams to browse, search, and organize screenshots of UI components.
+Browse, search, and organize UI component screenshots for design and engineering teams.
+
+## 🎨 Property Controls (IMMUTABLE BEHAVIOR)
+
+**⚠️ CRITICAL: This behavior is immutable and should never be changed**
+
+The property controls implement Figma/Storybook-style variant behavior:
+
+### Core Principles (IMMUTABLE)
+1. **ALL property options are always available** - No filtering based on current selection
+2. **Automatic property synchronization** - When a property changes, ALL other properties automatically adjust to match a valid variant
+3. **Smart variant matching** - The system finds the best matching screenshot and updates all properties accordingly
+
+### Example Workflow
+```
+Starting with: BadgeDescription_props_Type-ID-scan_User-Shopper
+User selects: "Type: Large-route"
+Result: Automatically changes to BadgeDescription_props_Type-Large-route_User-Driver
+```
+
+### Implementation Details
+- **Function:** `updatePropertiesForValidCombination()` - Updates all properties when one changes
+- **Function:** `groupPropertyControls()` - Always shows ALL available options (no filtering)
+- **Behavior:** Users can select any property value and get a valid combination
+
+### Why This Is Immutable
+This behavior ensures users can always explore any property value without restrictions, exactly like Figma and Storybook variants. Changing this would break the core user experience.
 
 ## 🚀 Features
 
