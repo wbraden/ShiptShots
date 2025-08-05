@@ -4,6 +4,29 @@ import path from 'path';
 import { ScreenshotData, PropertyControl } from '@/types/screenshot';
 import { determineControlType } from '@/utils/propertyControls';
 
+// Check if image is 2x resolution
+function checkImageResolution(filePath: string): { width: number; height: number; is2x: boolean } {
+  try {
+    // For now, we'll use a simple heuristic based on file size
+    // In a real implementation, you'd use a library like 'sharp' to get actual dimensions
+    const stats = fs.statSync(filePath);
+    const fileSizeKB = stats.size / 1024;
+    
+    // Rough heuristic: files under 50KB are likely not 2x
+    // This is a simple approximation - in production you'd want actual image dimensions
+    const is2x = fileSizeKB > 50;
+    
+    return {
+      width: 0, // Would be actual width in production
+      height: 0, // Would be actual height in production
+      is2x
+    };
+  } catch (error) {
+    console.error('Error checking image resolution:', error);
+    return { width: 0, height: 0, is2x: false };
+  }
+}
+
 // Parse filename to extract component, state, and props
 function parseFilename(filename: string): { 
   component: string; 
@@ -72,7 +95,7 @@ function parseFilename(filename: string): {
 }
 
 // Generate tags based on component and state
-function generateTags(component: string, state: string): string[] {
+function generateTags(component: string, state: string, propertyControls?: PropertyControl[]): string[] {
   const tags: string[] = [];
   
   // Add component name as a tag
@@ -85,6 +108,14 @@ function generateTags(component: string, state: string): string[] {
       tags.push(part.toLowerCase());
     }
   });
+
+  // Add property controls as tags
+  if (propertyControls && propertyControls.length > 0) {
+    propertyControls.forEach(control => {
+      tags.push(control.key.toLowerCase());
+      tags.push(control.value.toLowerCase());
+    });
+  }
   
   return [...new Set(tags)]; // Remove duplicates
 }
@@ -126,12 +157,15 @@ export async function GET() {
     
     const screenshots: ScreenshotData[] = pngFiles.map((filename, index) => {
       const { component, state, props, propertyControls } = parseFilename(filename);
-      const tags = generateTags(component, state);
+      const tags = generateTags(component, state, propertyControls);
       const description = generateDescription(component, state);
       
       // Get file stats to use actual creation/modification date
       const filePath = path.join(screenshotsDir, filename);
       const stats = fs.statSync(filePath);
+      
+      // Check image resolution
+      const resolution = checkImageResolution(filePath);
       
       return {
         id: `${component}_${state}_${index}`,
@@ -145,7 +179,8 @@ export async function GET() {
         imageUrl: `/screenshots/${filename}`,
         thumbnailUrl: `/screenshots/${filename}`,
         documentation: documentation[component] || null,
-        propertyControls
+        propertyControls,
+        resolution
       };
     });
     

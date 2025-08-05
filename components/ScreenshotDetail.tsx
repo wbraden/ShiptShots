@@ -2,10 +2,11 @@
 
 import { ScreenshotData, PropertyControl } from '@/types/screenshot';
 import { formatDate, generateShareableUrl } from '@/utils/screenshot';
-import { X, Copy, ExternalLink, Calendar, Tag, Code, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Copy, ExternalLink, Calendar, Code, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { groupPropertyControls, filterScreenshotsByProperties, hasPropertyControls } from '@/utils/propertyControls';
 import { cn } from '@/utils/cn';
+import { GroupedTags } from '@/components/GroupedTags';
 
 interface ScreenshotDetailProps {
   screenshot: ScreenshotData | null;
@@ -28,6 +29,17 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
     });
     return initialProperties;
   });
+
+  // Update selected properties when screenshot changes
+  useEffect(() => {
+    if (screenshot?.propertyControls) {
+      const initialProperties: Record<string, string> = {};
+      screenshot.propertyControls.forEach(control => {
+        initialProperties[control.key] = control.value;
+      });
+      setSelectedProperties(initialProperties);
+    }
+  }, [screenshot]);
 
   // Handle keyboard navigation - must be before any conditional returns
   useEffect(() => {
@@ -156,36 +168,35 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-lg max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] md:max-h-[85vh] lg:max-h-[95vh] overflow-hidden flex flex-col mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+        <div className="flex items-center justify-between p-3 md:p-4 border-b border-gray-200 flex-shrink-0">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900">
               {displayScreenshot.component}
             </h2>
-            <p className="text-gray-600">{displayScreenshot.state}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 md:p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
 
         <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
           {/* Image Section */}
-          <div className="lg:w-2/3 p-4 flex items-center justify-center overflow-hidden bg-gray-50 relative">
+          <div className="lg:w-2/3 p-3 md:p-4 flex items-center justify-center overflow-hidden bg-gray-50 relative">
             {/* Previous Button */}
             {currentHasPrevious && onNavigate && (
               <button
                 onClick={() => onNavigate('prev')}
-                className="absolute left-6 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-2 shadow-lg transition-all duration-200 z-10"
+                className="absolute left-2 md:left-6 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-1.5 md:p-2 shadow-lg transition-all duration-200 z-10"
                 title="Previous (←)"
               >
-                <ChevronLeft className="w-6 h-6 text-gray-700" />
+                <ChevronLeft className="w-4 h-4 md:w-6 md:h-6 text-gray-700" />
               </button>
             )}
             
@@ -193,39 +204,31 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
             {currentHasNext && onNavigate && (
               <button
                 onClick={() => onNavigate('next')}
-                className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-2 shadow-lg transition-all duration-200 z-10"
+                className="absolute right-2 md:right-6 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-1.5 md:p-2 shadow-lg transition-all duration-200 z-10"
                 title="Next (→)"
               >
-                <ChevronRight className="w-6 h-6 text-gray-700" />
+                <ChevronRight className="w-4 h-4 md:w-6 md:h-6 text-gray-700" />
               </button>
             )}
             
             <div className="bg-gray-100 rounded-lg overflow-hidden max-w-full max-h-full flex items-center justify-center">
-                                      <img
-                          src={displayScreenshot.imageUrl}
-                          alt={`${displayScreenshot.component} - ${displayScreenshot.state}`}
-                          className="max-w-full max-h-full object-contain"
-                          style={{ maxHeight: 'calc(100vh - 200px)' }}
-                        />
+              <img
+                src={displayScreenshot.imageUrl}
+                alt={`${displayScreenshot.component} - ${displayScreenshot.state}`}
+                className="max-w-full max-h-full object-contain"
+                style={{ maxHeight: 'calc(90vh - 120px)' }}
+              />
             </div>
           </div>
 
           {/* Metadata Section */}
-          <div className="lg:w-1/3 p-4 border-l border-gray-200 overflow-auto">
-            <div className="space-y-4">
+          <div className="lg:w-1/3 p-3 md:p-4 border-l border-gray-200 overflow-auto">
+            <div className="space-y-3 md:space-y-4">
               {/* Property Controls */}
               {hasPropertyControlsForComponent && propertyGroups.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="mb-3">
                     <h3 className="font-medium text-gray-900">Property Controls</h3>
-                    {Object.keys(selectedProperties).length > 0 && (
-                      <button
-                        onClick={clearAllProperties}
-                        className="text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        Clear all
-                      </button>
-                    )}
                   </div>
                   
                   <div className="space-y-3">
@@ -245,13 +248,13 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
                                 }}
                                 className={cn(
                                   "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
-                                  selectedProperties[group.key] === 'true' ? "bg-blue-600" : "bg-gray-200"
+                                  selectedProperties[group.key] === group.options[1] ? "bg-blue-600" : "bg-gray-200"
                                 )}
                               >
                                 <span
                                   className={cn(
                                     "inline-block h-3 w-3 transform rounded-full bg-white transition-transform",
-                                    selectedProperties[group.key] === 'true' ? "translate-x-5" : "translate-x-1"
+                                    selectedProperties[group.key] === group.options[1] ? "translate-x-5" : "translate-x-1"
                                   )}
                                 />
                               </button>
@@ -285,13 +288,7 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
                 </div>
               )}
 
-              {/* Description */}
-              {displayScreenshot.description && (
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-2">Description</h3>
-                  <p className="text-gray-600 text-sm">{displayScreenshot.description}</p>
-                </div>
-              )}
+
 
               {/* Date */}
               <div className="flex items-center gap-2">
@@ -303,36 +300,13 @@ export function ScreenshotDetail({ screenshot, onClose, onNavigate, hasPrevious 
 
               {/* Tags */}
               {displayScreenshot.tags && displayScreenshot.tags.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Tag className="w-4 h-4 text-gray-500" />
-                    <h3 className="font-medium text-gray-900">Tags</h3>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {displayScreenshot.tags.map((tag: string, index: number) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                <GroupedTags 
+                  tags={displayScreenshot.tags} 
+                  propertyControls={displayScreenshot.propertyControls}
+                />
               )}
 
-              {/* Props */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Code className="w-4 h-4 text-gray-500" />
-                  <h3 className="font-medium text-gray-900">Props</h3>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <pre className="text-xs text-gray-700 overflow-x-auto">
-                    {JSON.stringify(displayScreenshot.props, null, 2)}
-                  </pre>
-                </div>
-              </div>
+
 
               {/* Actions */}
               <div className="space-y-2 pt-4 border-t border-gray-200">

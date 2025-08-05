@@ -263,7 +263,36 @@ export function formatDate(dateString: string): string {
 export function generateShareableUrl(screenshotId: string): string {
   if (typeof window !== 'undefined') {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/screenshot/${screenshotId}`;
+    return `${baseUrl}/browser?screenshot=${screenshotId}`;
   }
   return '';
+} 
+
+// Group tags intelligently using property controls from filename parsing
+export function groupTagsIntelligently(
+  tags: string[], 
+  propertyControls?: Array<{ key: string; value: string }>
+): Array<{ key: string; value: string } | { tag: string }> {
+  const grouped: Array<{ key: string; value: string } | { tag: string }> = [];
+  
+  // If we have property controls, use them directly for key-value pairs
+  if (propertyControls && propertyControls.length > 0) {
+    propertyControls.forEach(control => {
+      grouped.push({ key: control.key, value: control.value });
+    });
+  }
+  
+  // Add remaining tags that aren't part of property controls
+  const propertyKeys = new Set(propertyControls?.map(pc => pc.key.toLowerCase()) || []);
+  const propertyValues = new Set(propertyControls?.map(pc => pc.value.toLowerCase()) || []);
+  
+  tags.forEach(tag => {
+    const lowerTag = tag.toLowerCase();
+    // Only add tags that aren't already covered by property controls
+    if (!propertyKeys.has(lowerTag) && !propertyValues.has(lowerTag)) {
+      grouped.push({ tag });
+    }
+  });
+
+  return grouped;
 } 

@@ -2,7 +2,7 @@
 
 import { ScreenshotData } from '@/types/screenshot';
 import { getUniqueComponents } from '@/utils/screenshot';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Microscope } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
 
@@ -62,12 +62,6 @@ export function Sidebar({
                   <h1 className="text-lg font-bold text-gray-900">ShiptShots</h1>
                   <p className="text-sm text-gray-500">Screenshot Browser</p>
                 </div>
-              </Link>
-              <Link
-                href="/analysis"
-                className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Analysis
               </Link>
             </div>
             <button
@@ -146,6 +140,15 @@ export function Sidebar({
                 <span>Components:</span>
                 <span className="font-medium">{components.length}</span>
               </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <Link
+                href="/analysis"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+              >
+                <Microscope className="w-4 h-4" />
+                <span>Analysis</span>
+              </Link>
             </div>
           </div>
         </div>

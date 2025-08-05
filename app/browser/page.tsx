@@ -16,10 +16,12 @@ import { Sidebar } from '@/components/Sidebar';
 import { MobileMenuButton } from '@/components/MobileMenuButton';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
-import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X, Grid3X3, Grid2X2, Grid, ArrowUpDown, Calendar, SortAsc, SortDesc, Check } from 'lucide-react';
+import { ArrowLeft, FileText, ChevronDown, ChevronUp, Search, X, Grid3X3, Grid2X2, Grid, ArrowUpDown, Calendar, SortAsc, SortDesc, Check, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import Link from 'next/link';
-import { hasPropertyControls } from '@/utils/propertyControls';
+import { hasPropertyControls, groupPropertyControls, filterScreenshotsByProperties } from '@/utils/propertyControls';
+import { formatDate, generateShareableUrl } from '@/utils/screenshot';
+import { GroupedTags } from '@/components/GroupedTags';
 
 export default function BrowserPage() {
   const [screenshots, setScreenshots] = useState<ScreenshotData[]>([]);
@@ -41,17 +43,41 @@ export default function BrowserPage() {
   const [sortBy, setSortBy] = useState<'alphabetical' | 'date'>('alphabetical');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [selectedProperties, setSelectedProperties] = useState<Record<string, string>>({});
 
-  // Get initial component from URL params
+  // Update selected properties when screenshot changes
+  useEffect(() => {
+    if (selectedScreenshot?.propertyControls) {
+      const initialProperties: Record<string, string> = {};
+      selectedScreenshot.propertyControls.forEach(control => {
+        initialProperties[control.key] = control.value;
+      });
+      setSelectedProperties(initialProperties);
+    } else {
+      setSelectedProperties({});
+    }
+  }, [selectedScreenshot]);
+
+  // Get initial component and screenshot from URL params
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const componentParam = urlParams.get('component');
+      const screenshotParam = urlParams.get('screenshot');
+      
       if (componentParam) {
         setSelectedComponent(componentParam);
       }
+      
+      if (screenshotParam) {
+        // Find the screenshot by ID and open it in the modal
+        const screenshot = screenshots.find(s => s.id === screenshotParam);
+        if (screenshot) {
+          setSelectedScreenshot(screenshot);
+        }
+      }
     }
-  }, []);
+  }, [screenshots]);
 
   // Fetch screenshots from API
   useEffect(() => {
@@ -154,6 +180,10 @@ export default function BrowserPage() {
   };
 
   const handleComponentSelect = (component: string | null) => {
+    // If we're in detail view and selecting a different component, clear the detail view
+    if (selectedScreenshot && component !== selectedScreenshot.component) {
+      setSelectedScreenshot(null);
+    }
     setSelectedComponent(component);
     setSidebarOpen(false); // Close sidebar on mobile after selection
     
@@ -178,7 +208,15 @@ export default function BrowserPage() {
   // Get component-specific tags based on selected component
   const getComponentSpecificTags = (component: string | null): string[] => {
     if (!component) {
-      return availableTags.sort(); // Show all tags when no component is selected
+      // For all tags, sort by occurrence count
+      const allTags = screenshots.flatMap(s => s.tags || []);
+      const tagCounts: Record<string, number> = {};
+      
+      allTags.forEach(tag => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
+      
+      return Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
     }
     
     // Filter screenshots by the selected component and get their tags
@@ -190,7 +228,13 @@ export default function BrowserPage() {
       tag.toLowerCase() !== component.toLowerCase()
     );
     
-    return [...new Set(filteredTags)].sort(); // Remove duplicates and sort alphabetically
+    // Count occurrences and sort by count (descending)
+    const tagCounts: Record<string, number> = {};
+    filteredTags.forEach(tag => {
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+    });
+    
+    return Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a]);
   };
 
   const componentSpecificTags = getComponentSpecificTags(selectedComponent);
@@ -219,6 +263,39 @@ export default function BrowserPage() {
   const totalScreenshots = screenshots.length;
   const filteredCount = filteredScreenshots.length;
 
+  // Property control logic for detail view
+  const componentScreenshots = selectedScreenshot ? screenshots.filter(s => s.component === selectedScreenshot.component) : [];
+  const hasPropertyControlsForComponent = hasPropertyControls(screenshots, selectedScreenshot?.component);
+  const basePropertyGroups = groupPropertyControls(componentScreenshots);
+  const detailFilteredScreenshots = filterScreenshotsByProperties(componentScreenshots, selectedProperties);
+  
+  // Simple property groups - show all options like Figma
+  const propertyGroups = basePropertyGroups.map(group => ({
+    ...group,
+    currentValue: selectedProperties[group.key] || group.currentValue
+  }));
+
+  // Use the first matching screenshot, or fall back to the original
+  const displayScreenshot = detailFilteredScreenshots.length > 0 ? detailFilteredScreenshots[0] : selectedScreenshot;
+
+  const handlePropertyChange = (key: string, value: string) => {
+    setSelectedProperties(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleCopyLink = async () => {
+    if (!selectedScreenshot) return;
+    const url = generateShareableUrl(selectedScreenshot.id);
+    try {
+      await navigator.clipboard.writeText(url);
+      // You could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-gray-50">
       {/* Sidebar (fixed on desktop) */}
@@ -231,18 +308,76 @@ export default function BrowserPage() {
       />
 
       {/* Main Content Wrapper */}
-      <div className="lg:ml-64">
+      <div className="lg:ml-64 h-screen flex flex-col">
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {selectedScreenshot ? (
+            // Detail View Header
+            <div className="px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-16">
+                <div className="flex items-center gap-4">
+                  {/* Mobile Menu Button */}
+                  <div className="lg:hidden">
+                    <MobileMenuButton onClick={toggleSidebar} />
+                  </div>
+                  <button
+                    onClick={() => setSelectedScreenshot(null)}
+                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span className="text-sm">Back to Browser</span>
+                  </button>
+                  <div className="h-4 w-px bg-gray-300"></div>
+                  <div>
+                    <h1 className="text-lg font-semibold text-gray-900">
+                      {selectedScreenshot.component}
+                    </h1>
+                    <p className="text-sm text-gray-600">
+                      {formatDate(selectedScreenshot.date)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {getNavigationState().hasPrevious && handleNavigateScreenshot && (
+                    <button
+                      onClick={() => handleNavigateScreenshot('prev')}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Previous (←)"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-gray-700" />
+                    </button>
+                  )}
+                  {getNavigationState().hasNext && handleNavigateScreenshot && (
+                    <button
+                      onClick={() => handleNavigateScreenshot('next')}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Next (→)"
+                    >
+                      <ChevronRight className="w-4 h-4 text-gray-700" />
+                    </button>
+                  )}
+                  <button
+                    onClick={handleCopyLink}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600 hover:text-gray-700 flex items-center gap-2"
+                    title="Copy Link"
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span className="text-sm">Copy link</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Browser Header (Original Search/Filter Controls)
+            <div className="px-4 sm:px-6 lg:px-8">
             {/* Top Header Row with Search and Filter Mode */}
-            <div className="flex items-center gap-4 h-16">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 h-auto lg:h-16 py-4 lg:py-0">
               {/* Mobile Menu Button */}
               <div className="lg:hidden">
                 <MobileMenuButton onClick={toggleSidebar} />
               </div>
               
-              <div className="flex-1">
+                <div className="flex-1 w-full">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
@@ -263,6 +398,8 @@ export default function BrowserPage() {
                 </div>
               </div>
               
+                {/* Controls Row - Wraps on mobile/tablet */}
+                <div className="flex flex-wrap items-center gap-2 lg:gap-4 w-full lg:w-auto">
               {/* Filter Mode Toggle */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-500">Filter Mode:</span>
@@ -292,48 +429,36 @@ export default function BrowserPage() {
                 </div>
               </div>
               
-              {/* Grid Density Toggle */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Density:</span>
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setGridDensity('compact')}
-                    className={cn(
-                      "px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1",
-                      gridDensity === 'compact'
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
-                    )}
-                    title="Compact"
-                  >
-                    <Grid3X3 className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={() => setGridDensity('default')}
-                    className={cn(
-                      "px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1",
-                      gridDensity === 'default'
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
-                    )}
-                    title="Default"
-                  >
-                    <Grid2X2 className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={() => setGridDensity('comfortable')}
-                    className={cn(
-                      "px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1",
-                      gridDensity === 'comfortable'
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900"
-                    )}
-                    title="Comfortable"
-                  >
-                    <Grid className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
+                  {/* Grid Density Toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Density:</span>
+                    <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                      <button
+                        onClick={() => setGridDensity('compact')}
+                        className={cn(
+                          "px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1",
+                          gridDensity === 'compact'
+                            ? "bg-white text-gray-900 shadow-sm"
+                            : "text-gray-600 hover:text-gray-900"
+                        )}
+                        title="Compact"
+                      >
+                        <Grid3X3 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => setGridDensity('default')}
+                        className={cn(
+                          "px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1",
+                          gridDensity === 'default'
+                            ? "bg-white text-gray-900 shadow-sm"
+                            : "text-gray-600 hover:text-gray-900"
+                        )}
+                        title="Default"
+                      >
+                        <Grid2X2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
               
               {/* Sort Controls */}
               <div className="relative">
@@ -421,9 +546,8 @@ export default function BrowserPage() {
                     </div>
                   </div>
                 )}
-              </div>
-              
-
+                  </div>
+                </div>
             </div>
             
             {/* Filter Section */}
@@ -438,11 +562,109 @@ export default function BrowserPage() {
               />
             </div>
           </div>
+          )}
         </header>
 
         {/* Main Content */}
-        <main className="flex-1">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="flex-1 flex flex-col">
+          {selectedScreenshot ? (
+            // Detail View (Storybook-like)
+            <div className="flex-1 flex flex-col lg:flex-row">
+              {/* Canvas Area (Storybook Canvas) */}
+              <div className="flex-1 bg-gray-50 flex items-center justify-center p-4 overflow-auto min-h-0">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <img
+                    src={displayScreenshot?.imageUrl || selectedScreenshot?.imageUrl}
+                    alt={`${displayScreenshot?.component || selectedScreenshot?.component} - ${displayScreenshot?.state || selectedScreenshot?.state}`}
+                    className="max-w-full max-h-full object-contain"
+                    style={{ maxHeight: 'calc(90vh - 120px)' }}
+                  />
+                </div>
+              </div>
+
+              {/* Controls Panel (Storybook Controls) */}
+              <div className="w-full lg:w-80 bg-white border-t lg:border-l lg:border-t-0 border-gray-200 lg:overflow-auto lg:h-full flex flex-col">
+                <div className="p-4 space-y-6">
+                  {/* Property Controls */}
+                  {hasPropertyControlsForComponent && propertyGroups.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900 mb-3">Controls</h3>
+                      <div className="space-y-3">
+                        {propertyGroups.map(group => (
+                          <div key={group.key}>
+                            {group.type === 'toggle' && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm text-gray-700 capitalize">{group.key}</span>
+                                <div className="w-1/2">
+                                  <button
+                                    onClick={() => {
+                                      const currentValue = selectedProperties[group.key];
+                                      const availableValues = group.options;
+                                      const currentIndex = availableValues.indexOf(currentValue);
+                                      const nextIndex = (currentIndex + 1) % availableValues.length;
+                                      handlePropertyChange(group.key, availableValues[nextIndex]);
+                                    }}
+                                    className={cn(
+                                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                                      selectedProperties[group.key] === group.options[1] ? "bg-blue-600" : "bg-gray-200"
+                                    )}
+                                  >
+                                    <span
+                                      className={cn(
+                                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                        selectedProperties[group.key] === group.options[1] ? "translate-x-6" : "translate-x-1"
+                                      )}
+                                    />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {group.type === 'dropdown' && (
+                              <div className="flex items-center justify-between">
+                                <label className="text-sm text-gray-700 capitalize">{group.key}</label>
+                                <div className="w-1/2">
+                                  <div className="relative">
+                                    <select
+                                      value={selectedProperties[group.key] || ''}
+                                      onChange={(e) => handlePropertyChange(group.key, e.target.value)}
+                                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none pr-10"
+                                    >
+                                      {group.options.map(option => (
+                                        <option key={option} value={option}>
+                                          {option}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tags */}
+                  {(displayScreenshot?.tags || selectedScreenshot?.tags) && (displayScreenshot?.tags?.length || selectedScreenshot?.tags?.length) > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-900 mb-3">Tags</h3>
+                      <GroupedTags
+                        tags={displayScreenshot?.tags || selectedScreenshot?.tags || []}
+                        propertyControls={displayScreenshot?.propertyControls || selectedScreenshot?.propertyControls}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Browser View (Original Grid Layout)
+            <div className="px-4 sm:px-6 lg:px-8 py-8">
 
             {/* Component Filter Indicator */}
             {selectedComponent && (
@@ -558,16 +780,8 @@ export default function BrowserPage() {
                   </div>
                 )}
               </div>
-
-            {/* Screenshot Detail Modal */}
-            <ScreenshotDetail
-              screenshot={selectedScreenshot}
-              onClose={handleCloseDetail}
-              onNavigate={handleNavigateScreenshot}
-              allScreenshots={screenshots}
-              {...getNavigationState()}
-            />
           </div>
+          )}
         </main>
       </div>
     </div>

@@ -8,13 +8,24 @@ export interface ScreenshotMetadata {
   description?: string;
 }
 
-export interface ScreenshotData extends ScreenshotMetadata {
+export interface ScreenshotData {
   id: string;
+  component: string;
+  state: string;
+  props: Record<string, any>;
+  filename: string;
+  date: string;
+  tags: string[];
+  description: string;
   imageUrl: string;
   thumbnailUrl: string;
   documentation?: string | null;
-  // New property for property toggle view
   propertyControls?: PropertyControl[];
+  resolution?: {
+    width: number;
+    height: number;
+    is2x: boolean;
+  };
 }
 
 export type GroupByOption = 'component' | 'state' | 'flat';
